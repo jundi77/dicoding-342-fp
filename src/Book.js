@@ -1,3 +1,5 @@
+/* eslint-disable eqeqeq */
+/* eslint-disable no-bitwise */
 /* eslint-disable no-multi-assign */
 /* eslint-disable no-prototype-builtins */
 const nanoid = require('nanoid');
@@ -13,6 +15,7 @@ class BookShelf {
    */
   addBook(req, h) {
     const body = req.payload;
+    global.Log.log(`[IP ${req.info.remoteAddress}] User menambah buku`);
 
     const validator = new Validator({
       name: 'string',
@@ -40,7 +43,7 @@ class BookShelf {
 
     if (!body.hasOwnProperty('name')) {
       return h.response({
-        status: 'error',
+        status: 'fail',
         message: 'Gagal menambahkan buku. Mohon isi nama buku',
       }).code(400);
     }
@@ -52,14 +55,14 @@ class BookShelf {
       }
 
       return h.response({
-        status: 'error',
+        status: 'fail',
         message: validationResult,
       }).code(400);
     }
 
     const newBook = { ...body };
     newBook.id = nanoid.nanoid();
-    newBook.finished = false;
+    newBook.finished = (newBook.pageCount === newBook.readPage);
     newBook.updatedAt = newBook.insertedAt = new Date().toISOString();
 
     this.#books.push(newBook);
@@ -79,10 +82,29 @@ class BookShelf {
    * @param {import("hapi").ResponseToolkit} h
    */
   getBooks(req, h) {
+    const { name, reading, finished } = req.query;
+    global.Log.log(`[IP ${req.info.remoteAddress}] User melihat-lihat buku`);
+
     return h.response({
       status: 'success',
       data: {
-        books: this.#books.map((book) => ({
+        books: this.#books.filter((val) => {
+          let filterLogic = true;
+
+          if (name !== undefined) {
+            filterLogic &= (val.name.toLowerCase().includes(name.toLowerCase()));
+          }
+
+          if (reading !== undefined) {
+            filterLogic &= (val.reading === (reading == 1));
+          }
+
+          if (finished !== undefined) {
+            filterLogic &= (val.finished === (finished == 1));
+          }
+
+          return filterLogic;
+        }).map((book) => ({
           id: book.id,
           name: book.name,
           publisher: book.publisher,
@@ -99,6 +121,7 @@ class BookShelf {
   getBook(req, h) {
     const { bookId } = req.params;
     const book = this.#books.find((val) => val.id === bookId);
+    global.Log.log(`[IP ${req.info.remoteAddress}] User melihat-lihat detail buku`);
 
     if (!book) {
       return h.response({
@@ -123,6 +146,7 @@ class BookShelf {
   editBook(req, h) {
     const { bookId } = req.params;
     const book = this.#books.find((val) => val.id === bookId);
+    global.Log.log(`[IP ${req.info.remoteAddress}] User mengedit buku`);
 
     if (!book) {
       return h.response({
@@ -145,7 +169,7 @@ class BookShelf {
     }, {
       readPage: (r) => {
         if (r.readPage > r.pageCount) {
-          return 'Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount';
+          return 'Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount';
         }
 
         return true;
@@ -159,7 +183,7 @@ class BookShelf {
 
     if (!body.hasOwnProperty('name')) {
       return h.response({
-        status: 'error',
+        status: 'fail',
         message: 'Gagal memperbarui buku. Mohon isi nama buku',
       }).code(400);
     }
@@ -171,13 +195,14 @@ class BookShelf {
       }
 
       return h.response({
-        status: 'error',
+        status: 'fail',
         message: validationResult,
       }).code(400);
     }
 
     Object.assign(book, body);
     book.updatedAt = new Date().toISOString();
+    book.finished = (book.pageCount === book.readPage);
 
     return h.response({
       status: 'success',
@@ -193,6 +218,8 @@ class BookShelf {
   deleteBook(req, h) {
     const { bookId } = req.params;
     let index = null;
+
+    global.Log.log(`[IP ${req.info.remoteAddress}] User menghapus buku`);
     const book = this.#books.find((val, idx) => {
       const thisOne = (val.id === bookId);
       if (thisOne) {

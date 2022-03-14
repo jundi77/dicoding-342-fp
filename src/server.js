@@ -1,5 +1,6 @@
 const Hapi = require('@hapi/hapi');
-const Log = require('./logging/Log');
+const { Log } = require('./logging/Log');
+const { routes } = require('./routers');
 
 (async () => {
   global.Log = Log;
@@ -9,11 +10,13 @@ const Log = require('./logging/Log');
     host: 'localhost',
   });
 
+  server.route(routes);
+
   try {
     await server.start();
   } catch (error) {
-    console.error(`Server failed to start: ${error.message}`);
+    Log.error(`Server failed to start: ${error.message}`);
   }
 
-  console.log(`Server started at ${server.info.uri}`);
+  Log.log(`Server started at ${server.info.uri}`);
 })();

@@ -34,7 +34,7 @@ class Validator {
 
       // eslint-disable-next-line valid-typeof
       const msg = this._rules[name](requestBody);
-      if (!msg === true) {
+      if (msg !== true) {
         return msg;
       }
     }

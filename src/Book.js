@@ -177,6 +177,7 @@ class BookShelf {
     }
 
     Object.assign(book, body);
+    book.updatedAt = new Date().toISOString();
 
     return h.response({
       status: 'success',
